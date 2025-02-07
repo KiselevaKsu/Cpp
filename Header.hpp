@@ -4,5 +4,6 @@
 
 void inputABC(double& a, double& b, double& c);
 double discriminant(double a, double b, double c);
+void findRoots(double a, double b, double disc);
 
 #endif
