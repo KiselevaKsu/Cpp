@@ -6,7 +6,7 @@
 #include "Block.h"
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Arkanoid - Этап 1");
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Arkanoid");
     Paddle paddle(350.0f, 550.0f);
     sf::Clock clock;
 
