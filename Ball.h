@@ -2,6 +2,7 @@
 #define BALL_H
 
 #include <SFML/Graphics.hpp>
+#include "Paddle.h"
 
 class Ball {
 private:
@@ -15,6 +16,7 @@ public:
     void update(float deltaTime);
     void draw(sf::RenderWindow& window);
     void checkCollision(const sf::RenderWindow& window);
+    void checkCollisionWithPaddle(Paddle& paddle);
 
     sf::FloatRect getBounds();
     void bounceHorizontal();

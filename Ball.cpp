@@ -26,6 +26,18 @@ void Ball::checkCollision(const sf::RenderWindow& window) {
         bounceVertical();
 }
 
+void Ball::checkCollisionWithPaddle(Paddle& paddle) {
+    if (getBounds().intersects(paddle.getBounds())) {
+        // куда мяч ударил каретку
+        float ballCenterX = shape.getPosition().x + shape.getRadius();
+        float paddleCenterX = paddle.getBounds().left + paddle.getBounds().width / 2.0f;
+
+        float difference = ballCenterX - paddleCenterX; // направление
+        velocity.x = difference * 5.0f; // дальше от центра - сильнее отклонение
+        velocity.y = -std::abs(velocity.y); // вверх
+    }
+}
+
 sf::FloatRect Ball::getBounds() {
     return shape.getGlobalBounds();
 }
