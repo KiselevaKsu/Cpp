@@ -14,6 +14,7 @@ public:
     void draw(sf::RenderWindow& window);
     bool isDestroyed() const;
     void hit();
+    int getHealth() const;
     sf::FloatRect getBounds();
 };
 
