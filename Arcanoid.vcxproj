@@ -137,11 +137,13 @@
     <ClCompile Include="Arcanoid.cpp" />
     <ClCompile Include="Ball.cpp" />
     <ClCompile Include="Block.cpp" />
+    <ClCompile Include="Bonus.cpp" />
     <ClCompile Include="Paddle.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Ball.h" />
     <ClInclude Include="Block.h" />
+    <ClInclude Include="Bonus.h" />
     <ClInclude Include="Paddle.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

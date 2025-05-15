@@ -1,9 +1,9 @@
 #include "Block.h"
 
-Block::Block(float startX, float startY, float width, float height, int health) {
+Block::Block(float startX, float startY, float width, float height, int health, sf::Color color) {
     shape.setSize(sf::Vector2f(width, height));
     shape.setPosition(sf::Vector2f(startX, startY));
-    shape.setFillColor(sf::Color::Green); // обычный блок
+    shape.setFillColor(color);
     this->health = health;
 }
 
@@ -21,7 +21,7 @@ void Block::hit() {
     if (health > 0) {
         health--;
         if (health == 0) {
-            shape.setFillColor(sf::Color::Transparent); // исчезает
+            shape.setFillColor(sf::Color::Transparent);
         }
     }
 }
@@ -32,4 +32,8 @@ int Block::getHealth() const {
 
 sf::FloatRect Block::getBounds() {
     return shape.getGlobalBounds();
+}
+
+sf::Color Block::getColor() const {
+    return shape.getFillColor();
 }

@@ -9,14 +9,14 @@ private:
     int health;
 
 public:
-    Block(float startX, float startY, float width = 60.0f, float height = 20.0f, int health = 1);
+    Block(float startX, float startY, float width = 60.0f, float height = 20.0f, int health = 1, sf::Color color = sf::Color::Green);
 
     void draw(sf::RenderWindow& window);
     bool isDestroyed() const;
     void hit();
     int getHealth() const;
     sf::FloatRect getBounds();
+    sf::Color getColor() const;
 };
 
 #endif
-
