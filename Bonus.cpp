@@ -5,25 +5,48 @@
 Bonus generateRandomBonus(
     const vector<pair<int, int>>& removedPositions,
     const vector<int>& removedColors,
-    const vector<vector<int>>& board
+    vector<vector<int>>& board
 ) {
     Bonus bonus;
     bonus.type = NONE;
-    if (removedPositions.empty()) return bonus;
+    if (removedPositions.empty())
+        return bonus;
 
-    int chance = rand() % 100;
-    if (chance < 15) {
-        int idx = 0;
-        bonus.row = removedPositions[idx].first;
-        bonus.col = removedPositions[idx].second;
-        // берём цвет именно того удалённого кубика, куда выпадет бонус (первого)
-        bonus.color = removedColors[idx];
+    if (rand() % 100 >= 40)
+        return bonus;
 
-        int bonusTypeRoll = rand() % 100;
-        bonus.type = (bonusTypeRoll < 50 ? COLOR_CHANGE : BOMB);
+    int h = board.size();
+    int w = board.empty() ? 0 : board[0].size();
+
+    vector<pair<int, int>> candidates;
+    for (auto const& pos : removedPositions) {
+        for (int i = max(0, pos.first - 3); i <= min(h - 1, pos.first + 3); ++i) {
+            for (int j = max(0, pos.second - 3); j <= min(w - 1, pos.second + 3); ++j) {
+                if (board[i][j] != -1) {
+                    candidates.emplace_back(i, j);
+                }
+            }
+        }
     }
+    if (candidates.empty())
+        return bonus;
+
+    auto choice = candidates[rand() % candidates.size()];
+    bonus.row = choice.first;
+    bonus.col = choice.second;
+
+    bonus.type = (rand() % 2 == 0 ? COLOR_CHANGE : BOMB);
+
+    if (bonus.type == COLOR_CHANGE) {
+        board[bonus.row][bonus.col] = 100; // Малиновый (цвет смены)
+    }
+    else {
+        board[bonus.row][bonus.col] = 101; // Бирюзовый (цвет бомбы)
+    }
+
     return bonus;
 }
+
 
 void applyColorChangeBonus(vector<vector<int>>& board, const Bonus& bonus) {
     int r = bonus.row;
@@ -33,48 +56,29 @@ void applyColorChangeBonus(vector<vector<int>>& board, const Bonus& bonus) {
     vector<pair<int, int>> candidates;
     for (int i = max(0, r - 3); i <= min((int)board.size() - 1, r + 3); ++i) {
         for (int j = max(0, c - 3); j <= min((int)board[0].size() - 1, c + 3); ++j) {
-            if (board[i][j] != -1)
+            int dist = abs(i - r) + abs(j - c);
+            if (dist >= 1 && dist <= 3 && board[i][j] != -1)
                 candidates.push_back({ i, j });
         }
     }
 
     board[r][c] = originalColor;
 
-    vector<pair<int, int>> nonNeighbors;
-    for (auto& p : candidates) {
-        int dr = abs(p.first - r);
-        int dc = abs(p.second - c);
-        if (!((dr == 1 && dc == 0) || (dr == 0 && dc == 1)) && !(p.first == r && p.second == c)) {
-            nonNeighbors.push_back(p);
-        }
-    }
-
-    std::random_shuffle(nonNeighbors.begin(), nonNeighbors.end());
-    int count = min(2, (int)nonNeighbors.size());
+    std::random_shuffle(candidates.begin(), candidates.end());
+    int count = min(2, (int)candidates.size());
     for (int i = 0; i < count; ++i) {
-        board[nonNeighbors[i].first][nonNeighbors[i].second] = originalColor;
+        board[candidates[i].first][candidates[i].second] = originalColor;
     }
 }
 
 void applyBombBonus(vector<vector<int>>& board, const Bonus& bonus) {
+    board[bonus.row][bonus.col] = -1; // уничтожает себя
+
     vector<pair<int, int>> filledCells;
     for (int i = 0; i < (int)board.size(); ++i) {
         for (int j = 0; j < (int)board[0].size(); ++j) {
-            if (board[i][j] != -1) {
-                filledCells.push_back({ i, j });
-            }
+            if (board[i][j] != -1) filledCells.push_back({ i, j });
         }
-    }
-
-    if (board[bonus.row][bonus.col] != -1) {
-        bool found = false;
-        for (auto& p : filledCells) {
-            if (p.first == bonus.row && p.second == bonus.col) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) filledCells.push_back({ bonus.row, bonus.col });
     }
 
     std::random_shuffle(filledCells.begin(), filledCells.end());

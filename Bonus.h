@@ -16,7 +16,11 @@ struct Bonus {
     int color;
 };
 
-Bonus generateRandomBonus(const vector<pair<int, int>>& removedPositions, const vector<int>& removedColors,const vector<vector<int>>& board);
+Bonus generateRandomBonus(
+    const vector<pair<int, int>>& removedPositions,
+    const vector<int>& removedColors,
+    vector<vector<int>>& board
+);
 
 void applyColorChangeBonus(vector<vector<int>>& board, const Bonus& bonus);
 void applyBombBonus(vector<vector<int>>& board, const Bonus& bonus);

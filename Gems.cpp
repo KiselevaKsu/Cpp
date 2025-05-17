@@ -230,8 +230,9 @@ int removeChains(vector<vector<int>>& board, bool animate =true, vector<pair<int
         animateDisappearance(board, removedCells);
     }
     
-    if (removedCellsOut)   *removedCellsOut = removedCells;
+    if (removedCellsOut)   *removedCellsOut  = removedCells;
     if (removedColorsOut)  *removedColorsOut = removedColors;
+
 
     return removedCount;
 }
@@ -271,12 +272,12 @@ void updateWindowTitle(int score) {
 }
 
 int main(int argc, char* argv[]) {
+    srand(static_cast<unsigned int>(time(nullptr)));
     if (!initSDL()) return -1;
 
     vector<vector<int>> board;
     initializeBoard(board);
 
-    int moveCount = 0;
     int bonusesGiven = 0;
     const int maxMovesForBonus = 10; // пусть на 10 ходов выпадает хотя-бы 2 бонуса
     const int maxBonusesPerPeriod = 2;
@@ -287,7 +288,6 @@ int main(int argc, char* argv[]) {
         refillBoard(board);
     }
 
-    cout << "Score: " << score << endl;
     updateWindowTitle(score);
 
     bool quit = false;
@@ -318,6 +318,25 @@ int main(int argc, char* argv[]) {
                             // меняем кубики местами
                             swap(board[selected.first][selected.second], board[second.first][second.second]);
 
+                            if (board[selected.first][selected.second] >= 100 || board[second.first][second.second] >= 100) {
+                                Bonus bonus;
+                                if (board[selected.first][selected.second] >= 100) {
+                                    bonus.row = selected.first;
+                                    bonus.col = selected.second;
+                                }
+                                else {
+                                    bonus.row = second.first;
+                                    bonus.col = second.second;
+                                }
+
+                                if (board[bonus.row][bonus.col] == 100) {
+                                    applyColorChangeBonus(board, bonus);
+                                }
+                                else if (board[bonus.row][bonus.col] == 101) {
+                                    applyBombBonus(board, bonus);
+                                }
+                            }
+
                             // смотрим, сколько удалится кубиков сразу после хода
                             vector<pair<int, int>> removedCells;
                             vector<int> removedColors;
@@ -328,24 +347,6 @@ int main(int argc, char* argv[]) {
                                 score += removedFirst;
                                 updateWindowTitle(score);
 
-                                moveCount++;
-
-                                // генерируем бонус с вероятностью и ограничением по их кол-ву
-                                if (moveCount <= maxMovesForBonus && bonusesGiven < maxBonusesPerPeriod) {
-                                    Bonus bonus = generateRandomBonus(removedCells, removedColors, board);
-                                    if (bonus.type != NONE) {
-                                        bonusesGiven++;
-                                        // применяем бонус
-                                        if (bonus.type == COLOR_CHANGE) {
-                                            applyColorChangeBonus(board, bonus);
-                                        }
-                                        else if (bonus.type == BOMB) {
-                                            applyBombBonus(board, bonus);
-                                        }
-                                        animateFall(board);
-                                    }
-                                }
-
                                 // теперь делаем каскадные удаления (сдвиги и дозаполнение), но очки уже не даём за них
                                 while (true) {
                                     animateFall(board);
@@ -353,12 +354,18 @@ int main(int argc, char* argv[]) {
                                     int removedCascade = removeChains(board, true);
                                     if (removedCascade == 0) break;
                                 }
-                                // сброс счётчика
-                                if (moveCount >= maxMovesForBonus) {
-                                    moveCount = 0;
-                                    bonusesGiven = 0;
-                                }
 
+                                Bonus bonus = generateRandomBonus(removedCells, removedColors, board);
+                                
+                                if (bonus.type != NONE) {
+                                    if (bonus.type == COLOR_CHANGE) {
+                                        applyColorChangeBonus(board, bonus);
+                                    }
+                                    else if (bonus.type == BOMB) {
+                                        applyBombBonus(board, bonus);
+                                    }
+                                    animateFall(board);
+                                }
                             }
                             else {
                                 // если цепочек не появилось — минус 1 очко, но ход не отменяем (кубики остаются на новых местах)
@@ -383,7 +390,9 @@ int main(int argc, char* argv[]) {
 
         SDL_RenderPresent(renderer);
     }
-
     closeSDL();
     return 0;
 }
+
+    
+    
