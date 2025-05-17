@@ -5,6 +5,8 @@
 #include <ctime>
 #include <queue>
 #include <string>
+#include "Bonus.h"
+
 using namespace std;
 
 const int WIDTH = 8;     
@@ -91,11 +93,72 @@ void drawBoard(const vector<vector<int>>& board, pair<int, int> selected = { -1,
     }
 }
 
-// проверяем, соседствуют ли два кубика
+// проверяем, соседствуют ли два кубика (дигональ - не считается соседством)
 bool isAdjacent(pair<int, int> a, pair<int, int> b) {
     int dr = abs(a.first - b.first);
     int dc = abs(a.second - b.second);
     return ((dr == 1 && dc == 0) || (dr == 0 && dc == 1));
+}
+
+// плавное исчезновение кубиков
+void animateDisappearance(const vector<vector<int>>& board, const vector<pair<int, int>>& cells) {
+    for (int alpha = 255; alpha >= 0; alpha -= 15) {
+        SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+        SDL_RenderClear(renderer);
+
+        // Рисуем всю доску
+        SDL_Color colors[COLORS] = {
+            {255, 0, 0, 255},
+            {0, 255, 0, 255},
+            {0, 0, 255, 255},
+            {255, 255, 0, 255},
+            {255, 165, 0, 255}
+        };
+        for (int i = 0; i < HEIGHT; ++i) {
+            for (int j = 0; j < WIDTH; ++j) {
+                if (board[i][j] == -1) continue;
+                SDL_Rect tile{ j * TILE_SIZE, i * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+                SDL_Color c = colors[board[i][j]];
+                SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, c.a);
+                SDL_RenderFillRect(renderer, &tile);
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                SDL_RenderDrawRect(renderer, &tile);
+            }
+        }
+
+        // Рисуем "исчезающие" кубики белым с изменяемой прозрачностью
+        for (auto& cell : cells) {
+            SDL_Rect tile{ cell.second * TILE_SIZE, cell.first * TILE_SIZE, TILE_SIZE, TILE_SIZE };
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, alpha);
+            SDL_RenderFillRect(renderer, &tile);
+        }
+
+        SDL_RenderPresent(renderer);
+        SDL_Delay(10);
+    }
+}
+
+// плавный сдвиг кубиков вниз(падение)
+void animateFall(vector<vector<int>>& board) {
+    bool falling = true;
+    while (falling) {
+        falling = false;
+        SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
+        SDL_RenderClear(renderer);
+
+        for (int row = HEIGHT - 2; row >= 0; --row) {
+            for (int col = 0; col < WIDTH; ++col) {
+                if (board[row][col] != -1 && board[row + 1][col] == -1) {
+                    swap(board[row][col], board[row + 1][col]);
+                    falling = true;
+                }
+            }
+        }
+
+        drawBoard(board);
+        SDL_RenderPresent(renderer);
+        SDL_Delay(50);
+    }
 }
 
 // ищем цепочки из 3 и больше одинаковых кубиков и удаляем их
@@ -103,7 +166,7 @@ bool isAdjacent(pair<int, int> a, pair<int, int> b) {
 // сколько кубиков разбили (именно за 1 перестановку (то, что кубики падают сами
 // и разбиваются - не учитывается в счёт)) - столько + в счёт
 // если ничего не разбили -1 очко
-int removeChains(vector<vector<int>>& board) {
+int removeChains(vector<vector<int>>& board, bool animate =true, vector<pair<int, int>>* removedCellsOut = nullptr, vector<int>* removedColorsOut = nullptr) {
     vector<vector<bool>> visited(HEIGHT, vector<bool>(WIDTH, false));
     vector<vector<bool>> toRemove(HEIGHT, vector<bool>(WIDTH, false));
     int removedCount = 0;
@@ -150,19 +213,31 @@ int removeChains(vector<vector<int>>& board) {
         }
     }
 
-    // удаляем отмеченные кубики, считаем сколько
+    // удаляем отмеченные кубики, считаем сколько, позиции, цвет
+    vector<pair<int, int>> removedCells;
+    vector<int> removedColors;
     for (int i = 0; i < HEIGHT; ++i) {
         for (int j = 0; j < WIDTH; ++j) {
             if (toRemove[i][j]) {
+                removedCells.push_back({ i, j });
+                removedColors.push_back(board[i][j]);
                 board[i][j] = -1;
                 removedCount++;
             }
         }
     }
+    if (animate) {
+        animateDisappearance(board, removedCells);
+    }
+    
+    if (removedCellsOut)   *removedCellsOut = removedCells;
+    if (removedColorsOut)  *removedColorsOut = removedColors;
+
     return removedCount;
 }
 
-// сдвигаем кубики вниз, чтобы заполнить пустоты
+// сдвигаем кубики вниз, чтобы заполнить пустоты (без анимации) 
+// (чтобы вначале при отрисовке поля убрать готовые комбинации)
 void collapseBoard(vector<vector<int>>& board) {
     for (int col = 0; col < WIDTH; ++col) {
         int emptySpot = HEIGHT - 1;
@@ -201,8 +276,13 @@ int main(int argc, char* argv[]) {
     vector<vector<int>> board;
     initializeBoard(board);
 
+    int moveCount = 0;
+    int bonusesGiven = 0;
+    const int maxMovesForBonus = 10; // пусть на 10 ходов выпадает хотя-бы 2 бонуса
+    const int maxBonusesPerPeriod = 2;
+
     // с самого начала убираем все цепочки, чтобы поле было без готовых комбинаций (без очков)
-    while (removeChains(board) > 0) {
+    while (removeChains(board, false) > 0) {
         collapseBoard(board);
         refillBoard(board);
     }
@@ -239,26 +319,50 @@ int main(int argc, char* argv[]) {
                             swap(board[selected.first][selected.second], board[second.first][second.second]);
 
                             // смотрим, сколько удалится кубиков сразу после хода
-                            int removedFirst = removeChains(board);
+                            vector<pair<int, int>> removedCells;
+                            vector<int> removedColors;
+                            int removedFirst = removeChains(board, true, &removedCells, &removedColors);
 
                             if (removedFirst > 0) {
                                 // если удалили хотя бы 3 кубика (цепочка) — даём очки за эти кубики
                                 score += removedFirst;
-                                cout << "Score + " << removedFirst << " = " << score << endl;
                                 updateWindowTitle(score);
+
+                                moveCount++;
+
+                                // генерируем бонус с вероятностью и ограничением по их кол-ву
+                                if (moveCount <= maxMovesForBonus && bonusesGiven < maxBonusesPerPeriod) {
+                                    Bonus bonus = generateRandomBonus(removedCells, removedColors, board);
+                                    if (bonus.type != NONE) {
+                                        bonusesGiven++;
+                                        // применяем бонус
+                                        if (bonus.type == COLOR_CHANGE) {
+                                            applyColorChangeBonus(board, bonus);
+                                        }
+                                        else if (bonus.type == BOMB) {
+                                            applyBombBonus(board, bonus);
+                                        }
+                                        animateFall(board);
+                                    }
+                                }
 
                                 // теперь делаем каскадные удаления (сдвиги и дозаполнение), но очки уже не даём за них
                                 while (true) {
-                                    collapseBoard(board);
+                                    animateFall(board);
                                     refillBoard(board);
-                                    int removedCascade = removeChains(board);
+                                    int removedCascade = removeChains(board, true);
                                     if (removedCascade == 0) break;
                                 }
+                                // сброс счётчика
+                                if (moveCount >= maxMovesForBonus) {
+                                    moveCount = 0;
+                                    bonusesGiven = 0;
+                                }
+
                             }
                             else {
                                 // если цепочек не появилось — минус 1 очко, но ход не отменяем (кубики остаются на новых местах)
                                 score--;
-                                cout << "Score - 1 = " << score << endl;
                                 updateWindowTitle(score);
                             }
                             selected = { -1, -1 };
