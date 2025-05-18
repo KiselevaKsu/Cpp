@@ -12,22 +12,22 @@
 int main() {
     sf::RenderWindow window(sf::VideoMode(800, 600), "Arkanoid");
     Paddle paddle(350.0f, 550.0f);
+    Paddle extraPaddle(350.0f, 500.0f, 100.0f, 20.0f);
     Ball ball(400.0f, 300.0f, 10.0f);
     sf::Clock clock;
 
-    // Генератор случайных чисел - ОБЪЕДИНИЛ вызов, чтобы не создавать дважды
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    // Для случайного выбора типа блока
+    // для случайного выбора типа блока
     std::uniform_int_distribution<> distType(0, 3);
-    // Для случайного выбора типа бонуса
-    std::uniform_int_distribution<> distBonusType(0, 5);
+    // для случайного выбора типа бонуса
+    std::uniform_int_distribution<> distBonusType(0, 4);
 
     std::vector<Block> blocks;
     float blockWidth = 70.0f, blockHeight = 20.0f, blockSpacing = 5.0f;
 
-    int bonusBlocks = 6, violetBlocks = 5, cyanBlocks = 3;
+    int bonusBlocks = 6, violetBlocks = 5, cyanBlocks = 2;
     int totalBlocks = 40;
 
     int row = 0, col = 0;
@@ -37,6 +37,7 @@ int main() {
 
         int blockType = distType(gen);
 
+        Block::Type blockTypeEnum = Block::Type::Green;
         sf::Color blockColor;
         int blockHealth = 1;
 
@@ -45,42 +46,49 @@ int main() {
             if (violetBlocks > 0) {
                 blockColor = sf::Color(128, 0, 128);
                 blockHealth = 9999;
+                blockTypeEnum = Block::Type::Violet;
                 --violetBlocks;
             }
             else {
                 blockColor = sf::Color::Green;
                 blockHealth = 1;
+                blockTypeEnum = Block::Type::Green;
             }
             break;
         case 1:  // Жёлтый (с бонусом)
             if (bonusBlocks > 0) {
                 blockColor = sf::Color::Yellow;
                 blockHealth = 1;
+                blockTypeEnum = Block::Type::Bonus;
                 --bonusBlocks;
             }
             else {
                 blockColor = sf::Color::Green;
                 blockHealth = 1;
+                blockTypeEnum = Block::Type::Green;
             }
             break;
         case 2:  // Голубой (ускоряющий)
             if (cyanBlocks > 0) {
                 blockColor = sf::Color::Cyan;
                 blockHealth = 1;
+                blockTypeEnum = Block::Type::Cyan;
                 --cyanBlocks;
             }
             else {
                 blockColor = sf::Color::Green;
                 blockHealth = 1;
+                blockTypeEnum = Block::Type::Green;
             }
             break;
         case 3:  // Зелёный (обычный)
             blockColor = sf::Color::Green;
             blockHealth = 1 + (i % 3);
+            blockTypeEnum = Block::Type::Green;
             break;
         }
 
-        blocks.emplace_back(x, y, blockWidth, blockHeight, blockHealth, blockColor);
+        blocks.emplace_back(x, y, blockWidth, blockHeight, blockHealth, blockColor, blockTypeEnum);
 
         col++;
         if (col >= 10) {
@@ -104,36 +112,54 @@ int main() {
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) paddle.moveLeft(deltaTime);
         if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) paddle.moveRight(deltaTime);
 
-        paddle.update(window);
-        ball.update(deltaTime);
-        ball.checkCollision(window);
-        ball.checkCollisionWithPaddle(paddle);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) ball.releaseSticky();
 
-        // Столкновения с блоками
+        paddle.update(window);
+        ball.update(deltaTime, paddle.getBounds().left, paddle.getBounds().top, paddle.getBounds().width);
+
+        if (paddle.isOneTime() && !paddle.isOneTimeUsed()) {
+            extraPaddle.update(window);
+            ball.checkCollisionWithPaddle(
+                extraPaddle.getBounds().left,
+                extraPaddle.getBounds().top,
+                extraPaddle.getBounds().width,
+                extraPaddle.getBounds().height,
+                true
+            );
+        }
+
+        ball.checkCollision(window);
+        ball.checkCollisionWithPaddle(paddle.getBounds().left, paddle.getBounds().top,
+            paddle.getBounds().width, paddle.getBounds().height, paddle.isOneTime());
+
+        if (paddle.isOneTime() && !paddle.isOneTimeUsed()) {
+            if (ball.getBounds().intersects(extraPaddle.getBounds())) {
+                ball.bounceVertical();
+                paddle.setOneTime(false);  // деактивируем доп. каретку после использования
+                paddle.resetOneTime();
+            }
+        }
+
+        // столкновения с блоками
         for (auto& block : blocks) {
             if (!block.isDestroyed() && ball.getBounds().intersects(block.getBounds())) {
                 ball.bounceVertical();
 
-                if (block.getColor() == sf::Color(128, 0, 128)) {
-                    // Фиолетовый блок не разрушается
+                if (block.getType() == Block::Type::Violet) {
+                    // фиолетовый блок не разрушается
                 }
                 else {
                     block.hit();
 
-                    if (block.getColor() == sf::Color::Yellow) {
+                    if (block.getType() == Block::Type::Bonus) {
                         Bonus::Type randomType = static_cast<Bonus::Type>(distBonusType(gen));
                         bonuses.emplace_back(
                             block.getBounds().left + (block.getBounds().width - 30.0f) / 2.0f,
                             block.getBounds().top + block.getBounds().height + 20.0f,  // чуть ниже блока
                             randomType);
-                        std::cout << "Bonus created at ("
-                            << block.getBounds().left + (block.getBounds().width - 30.0f) / 2.0f
-                            << ", "
-                            << block.getBounds().top + block.getBounds().height + 20.0f
-                            << ")\n";
                     }
 
-                    if (block.getColor() == sf::Color::Cyan) {
+                    if (block.getType() == Block::Type::Cyan) {
                         ball.increaseSpeed();
                     }
 
@@ -143,14 +169,19 @@ int main() {
             }
         }
 
-        // Обновляем бонусы
         for (auto& bonus : bonuses) {
             bonus.update(deltaTime);
         }
 
-        // Обработка столкновений бонусов с кареткой
+        // обработка столкновений бонусов с кареткой
         for (size_t i = 0; i < bonuses.size(); ++i) {
             if (bonuses[i].getBounds().intersects(paddle.getBounds())) {
+                if (bonuses[i].getType() == Bonus::Type::ONE_TIME_PADDLE) {
+                    paddle.setOneTime(true); // активируем доп. каретку
+                }
+                else if (bonuses[i].getType() == Bonus::Type::CHANGE_TRAJECTORY) {
+                    ball.changeTrajectory(); // меняем траекторию шара
+                }
                 bonuses[i].activate(paddle, ball);
                 bonuses.erase(bonuses.begin() + i);
                 --i;
@@ -158,14 +189,14 @@ int main() {
         }
 
 
-        // Удаление бонусов, вышедших за экран или неактивных
+        // удаление бонусов, вышедших за экран или неактивных
         bonuses.erase(std::remove_if(bonuses.begin(), bonuses.end(),
             [&window](const Bonus& b) {
                 return b.isOutOfWindow(window) || !b.isActive();
             }),
             bonuses.end());
 
-        // Проверка падения мяча
+        // проверка падения мяча
         if (ball.getBounds().top > window.getSize().y) {
             defeats++;
             score -= 2;
@@ -184,6 +215,9 @@ int main() {
         window.clear();
         paddle.draw(window);
         ball.draw(window);
+        if (paddle.isOneTime() && !paddle.isOneTimeUsed()) {
+            extraPaddle.draw(window);
+        }
         for (auto& block : blocks) block.draw(window);
         for (auto& bonus : bonuses) bonus.draw(window);
         window.display();

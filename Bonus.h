@@ -1,18 +1,16 @@
 #pragma once
-
 #include <SFML/Graphics.hpp>
 #include "Paddle.h"
 #include "Ball.h"
-#include "Bonus.h"
 
 class Bonus {
 public:
     enum class Type {
-        SIZE_INCREASE,   // ”величение размера каретки
-        SPEED_INCREASE,  // ”скорение м€ча
-        STICKY,          // ѕрилипание м€ча
-        CHANGE_TRAJECTORY,  // »зменение траектории
-        ONE_TIME_PADDLE  // ќдноразовое дно
+        SIZE_INCREASE,
+        SPEED_INCREASE,
+        STICKY,
+        CHANGE_TRAJECTORY,
+        ONE_TIME_PADDLE
     };
 
     Bonus(float startX, float startY, Type type);
@@ -20,17 +18,20 @@ public:
     void update(float deltaTime);
     void draw(sf::RenderWindow& window);
 
-    sf::FloatRect getBounds() const { return shape.getGlobalBounds(); }
+    sf::FloatRect getBounds() const;
     bool isOutOfWindow(const sf::RenderWindow& window) const;
-    bool isActive() const { return active; }
+    bool isActive() const;
 
     void activate(Paddle& paddle, Ball& ball);
+
+    Type getType() const;
 
 private:
     sf::RectangleShape shape;
     Type bonusType;
-
     float speed;
     bool active;
++
+    float duration;  // секунды
+    bool durationActive;
 };
-

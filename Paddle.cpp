@@ -1,7 +1,7 @@
 #include "Paddle.h"
 
 Paddle::Paddle(float startX, float startY, float width, float height)
-    : speed(450.0f), oneTimePaddle(false) {
+    : speed(450.f), oneTimePaddle(false), oneTimeUsed(false) {
     shape.setSize(sf::Vector2f(width, height));
     shape.setPosition(startX, startY);
     shape.setFillColor(sf::Color::White);
@@ -20,17 +20,19 @@ void Paddle::moveRight(float deltaTime) {
 }
 
 void Paddle::update(const sf::RenderWindow& window) {
-    // Проверяем, если активен одноразовый "щит" и он выходит за нижний край окна
-    if (oneTimePaddle && shape.getPosition().y + shape.getSize().y >= window.getSize().y) {
-        oneTimePaddle = false; // Отключаем одноразовую каретку
+    if (oneTimePaddle && oneTimeUsed) {
+        // если платформа одноразовая и уже использована — скрываем её
+        shape.setSize(sf::Vector2f(0, 0)); // скрываем платформу
     }
 }
 
 void Paddle::draw(sf::RenderWindow& window) {
-    window.draw(shape);
+    if (!oneTimePaddle || (oneTimePaddle && !oneTimeUsed)) {
+        window.draw(shape);
+    }
 }
 
-sf::FloatRect Paddle::getBounds() const{
+sf::FloatRect Paddle::getBounds() const {
     return shape.getGlobalBounds();
 }
 
@@ -40,4 +42,23 @@ sf::Vector2f Paddle::getPosition() const {
 
 void Paddle::setSize(float width, float height) {
     shape.setSize(sf::Vector2f(width, height));
+}
+
+void Paddle::setOneTime(bool value) {
+    oneTimePaddle = value;
+    oneTimeUsed = false;
+}
+
+bool Paddle::isOneTime() const {
+    return oneTimePaddle;
+}
+
+bool Paddle::isOneTimeUsed() const {
+    return oneTimeUsed;
+}
+
+void Paddle::resetOneTime() {
+    oneTimePaddle = false;
+    oneTimeUsed = false;
+    shape.setSize(sf::Vector2f(100.0f, 20.0f));
 }

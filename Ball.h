@@ -1,43 +1,32 @@
-#ifndef BALL_H
-#define BALL_H
-
+#pragma once
 #include <SFML/Graphics.hpp>
-#include "Paddle.h"
 
 class Ball {
+public:
+    Ball(float startX, float startY, float radius);
+
+    void update(float deltaTime, float paddleX, float paddleY, float paddleWidth);
+    void draw(sf::RenderWindow& window);
+    void checkCollision(const sf::RenderWindow& window);
+    void checkCollisionWithPaddle(float paddleX, float paddleY, float paddleWidth, float paddleHeight, bool isOneTime);
+
+    void bounceHorizontal();
+    void bounceVertical();
+    void increaseSpeed();
+    void changeTrajectory();
+
+    void setSticky(bool value);
+    bool isSticky() const;
+    void releaseSticky();
+
+    sf::FloatRect getBounds() const;
+
 private:
     sf::CircleShape shape;
     sf::Vector2f velocity;
     float speed;
-    bool sticky;            // Липкий мяч
-    bool extraLife;         // Одноразовое дно
+    bool sticky;
+    bool isStickyActive;
 
-public:
-    // Конструктор
-    Ball(float startX, float startY, float radius);
-
-    // Основные функции
-    void update(float deltaTime);
-    void draw(sf::RenderWindow& window);
-    void checkCollision(const sf::RenderWindow& window);
-    void checkCollisionWithPaddle(Paddle& paddle);
-    sf::FloatRect getBounds();
-
-    // Управление движением и скоростью
-    void bounceHorizontal();
-    void bounceVertical();
-    void increaseSpeed();
-    void changeTrajectory(); // Изменение траектории мяча
-
-    // Управление бонусами
-    void setSticky(bool isSticky) { sticky = isSticky; }
-    void setExtraLife(bool hasExtraLife) { extraLife = hasExtraLife; }
-
-    bool isSticky() const { return sticky; }
-    bool hasExtraLife() const { return extraLife; }
-
-    // Специальные эффекты
-    void applyStickyEffect(const Paddle& paddle);  // Применяем липкость мяча
+    void applyStickyEffect(float paddleX, float paddleY, float paddleWidth);
 };
-
-#endif

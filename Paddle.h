@@ -1,27 +1,31 @@
-#ifndef PADDLE_H
-#define PADDLE_H
-
+#pragma once
 #include <SFML/Graphics.hpp>
 
 class Paddle {
-private:
-    sf::RectangleShape shape;
-    float speed;
-    bool oneTimePaddle;  // ƒл€ одноразового дна
-
 public:
-    Paddle(float startX, float startY, float width = 100.0f, float height = 20.0f);
+    Paddle(float startX, float startY, float width = 100.f, float height = 20.f);
 
     void moveLeft(float deltaTime);
     void moveRight(float deltaTime);
     void update(const sf::RenderWindow& window);
+
     void draw(sf::RenderWindow& window);
 
     sf::FloatRect getBounds() const;
-    sf::Vector2f getPosition() const;  // ћетод дл€ получени€ позиции
-    void setSize(float width, float height);  // Ќовый метод дл€ установки размера
-    void setOneTime(bool value) { oneTimePaddle = value; }  // ”станавливаем состо€ние одноразового дна
-    bool isOneTime() const { return oneTimePaddle; }  // ѕровер€ем, одноразовое ли дно
-};
+    sf::Vector2f getPosition() const;
 
-#endif
+    void setSize(float width, float height);
+
+    void setOneTime(bool value);
+    bool isOneTime() const;
+    bool isOneTimeUsed() const;
+
+    void resetOneTime();
+
+private:
+    sf::RectangleShape shape;
+    float speed;
+    bool oneTimePaddle; // активировано?
+    bool oneTimeUsed;// было ли использовано
+
+};
