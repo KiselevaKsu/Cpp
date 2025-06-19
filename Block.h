@@ -1,33 +1,54 @@
-#ifndef BLOCK_H
-#define BLOCK_H
-
+#pragma once
 #include <SFML/Graphics.hpp>
+#include <vector>
+#include <memory>
 
-class Block {
-public:
-    enum class Type {
-        Violet,
-        Bonus,
-        Cyan,
-        Green
-    };
-private:
-    sf::RectangleShape shape;
+class Ball;
+class Bonus;
+
+class Block { //абстр. класс
+protected: // не видно снаружи, но видно в дочерних классах
+    sf::RectangleShape shape; //прямоугольник
     int health;
-    Type type;
 
 public:
-    Block(float startX, float startY, float width = 60.0f, float height = 20.0f, 
-        int health = 1, sf::Color color = sf::Color::Green, Type type = Type::Green);
+    Block(float startX, float startY, float width, float height, int health, sf::Color color); //констр.
+    virtual ~Block() = default; //вирт. дестр. чтобы при удалении блока через указатель на базу (Block*) вызывался правильный деструктор (дочернего класса)
 
-    void draw(sf::RenderWindow& window) const;
-    bool isDestroyed() const;
+    virtual void onHit(std::vector<std::unique_ptr<Bonus>>& bonuses, Ball& ball) = 0; // чисто абстрактная функция (переопределена в наследниках)
+
+    void draw(sf::RenderWindow& window) const; //рисует блок в окно
+    bool isDestroyed() const; 
     void hit();
-    int getHealth() const;
-    sf::FloatRect getBounds();
+    sf::FloatRect getBounds() const;
     sf::Color getColor() const;
-
-    Type getType() const;
 };
 
-#endif
+class GreenBlock : public Block { // обычный блок, наследует Block
+public:
+    GreenBlock(float x, float y);
+    void onHit(std::vector<std::unique_ptr<Bonus>>& bonuses, Ball& ball) override;
+};
+
+class VioletBlock : public Block { //неразрушаемый
+public:
+    VioletBlock(float x, float y);
+    void onHit(std::vector<std::unique_ptr<Bonus>>&, Ball&) override;
+};
+
+class CyanBlock : public Block { //ускорение
+public:
+    CyanBlock(float x, float y);
+    void onHit(std::vector<std::unique_ptr<Bonus>>&, Ball& ball) override;
+};
+
+class BonusBlock : public Block { //бонус
+public:
+    BonusBlock(float x, float y);
+    void onHit(std::vector<std::unique_ptr<Bonus>>& bonuses, Ball& ball) override;
+};
+
+class BlockFactory { //спец. класс, создающий объекты (случ. блоки)
+public:
+    static std::unique_ptr<Block> createRandomBlock(float x, float y); // возвращает "умный" (сам удалит объект) указатель (чтобы не париться с delete)
+};

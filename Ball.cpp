@@ -1,36 +1,42 @@
 #include "Ball.h"
-#include "Paddle.h"
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
-#include <random>
 
+// статическа€ функци€ класса ball (вызываетс€ без создани€ объекта)
+float Ball::randomFloat(float min, float max) {
+    //static - сохран€ет генератор между вызовами
+    //thread_local - каждый поток получает собственный генератор
+    // mt19937 - генератор случ. чисел; 
+    static thread_local std::mt19937 generator{ std::random_device{}() };
+    // distribution(min, max) - создаЄт диапазон от мин - макс
+    std::uniform_real_distribution<float> distribution(min, max);
+    return distribution(generator); // выдаЄт случ. число в диапазоне
+}
+
+// конструктор класса ball
 Ball::Ball(float startX, float startY, float radius)
-    : speed(400.0f), sticky(false), isStickyActive(false) {
+    : speed(400.f), sticky(false), isStickyActive(false), velocity{} {
+
     shape.setRadius(radius);
-    shape.setPosition(startX, startY);
     shape.setFillColor(sf::Color::White);
+    shape.setPosition(startX, startY);
 
-    static bool seeded = false;
-    if (!seeded) {
-        std::srand(static_cast<unsigned>(std::time(nullptr)));
-        seeded = true;
-    }
-
-    float angle = 45.0f * 3.14159f / 180.0f; 
-    velocity.x = speed * std::cos(angle);
-    velocity.y = -speed * std::sin(angle);
+    // движение под углом 45 градусов
+    const float initialAngle = degToRad(45.f); // в радианы
+    velocity.x = speed * std::cos(initialAngle);
+    velocity.y = -speed * std::sin(initialAngle); // минус тк летит вверх
 }
 
 void Ball::update(float deltaTime, float paddleX, float paddleY, float paddleWidth) {
     if (sticky && isStickyActive) {
         applyStickyEffect(paddleX, paddleY, paddleWidth);
-        return; // м€ч следует за платформой
+        return;
     }
-    shape.move(velocity * deltaTime);
+    shape.move(velocity * deltaTime); // если не прилип м€ч
 }
 
-void Ball::draw(sf::RenderWindow& window) {
+void Ball::draw(sf::RenderWindow& window) const { // const - метод не мен€ет Ball
     window.draw(shape);
 }
 
@@ -39,34 +45,57 @@ sf::FloatRect Ball::getBounds() const {
 }
 
 void Ball::checkCollision(const sf::RenderWindow& window) {
-    if (shape.getPosition().x <= 0 || shape.getPosition().x + shape.getRadius() * 2 >= window.getSize().x) {
+    const auto pos = shape.getPosition();
+    const float diameter = shape.getRadius() * 2.f;
+    const auto windowSize = window.getSize();
+
+    // отскок от границ (лево\право\верх)
+    if (pos.x <= 0.f || pos.x + diameter >= windowSize.x) {
         bounceHorizontal();
     }
-    if (shape.getPosition().y <= 0) {
+    if (pos.y <= 0.f) {
         bounceVertical();
     }
 }
 
-void Ball::checkCollisionWithPaddle(float paddleX, float paddleY, float paddleWidth, float paddleHeight, bool isOneTime) {
+void Ball::checkCollisionWithPaddle(float paddleX, float paddleY, float paddleWidth, float paddleHeight, bool /*isOneTime*/) {
     sf::FloatRect paddleBounds(paddleX, paddleY, paddleWidth, paddleHeight);
 
     if (shape.getGlobalBounds().intersects(paddleBounds) && !isStickyActive) {
-
         float ballCenterX = shape.getPosition().x + shape.getRadius();
-        float paddleCenterX = paddleX + paddleWidth / 2.0f;
+        float paddleCenterX = paddleX + paddleWidth / 2.f;
 
-        float offset = (ballCenterX - paddleCenterX) / (paddleWidth / 2.0f); // смещение от центра
+        float offset = (ballCenterX - paddleCenterX) / (paddleWidth / 2.f); // где по платформе ударилс€ м€ч
 
-        float angle = offset * 60.0f; // макс угол ±60∞
+        float angleDegrees = offset * 60.f; // угол отражени€ +-60 град.
+        float angleRadians = degToRad(angleDegrees);
 
-        float angleRadians = angle * 3.14159f / 180.0f; //радианы
+        // скорость та же, мен€етс€ направление
+        float currentSpeed = std::hypot(velocity.x, velocity.y);
 
-        float newSpeed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-        velocity.x = newSpeed * sin(angleRadians);
-        velocity.y = -abs(newSpeed * cos(angleRadians)); // всегда вверх после касани€
+        velocity.x = currentSpeed * std::sin(angleRadians);
+        velocity.y = -std::abs(currentSpeed * std::cos(angleRadians)); // всегда вверх после касани€
     }
 }
 
+void Ball::reset(float startX, float startY) {
+    shape.setPosition(startX, startY);
+
+    // движение под углом 45 градусов (как в конструкторе)
+    const float initialAngle = degToRad(45.f);
+    velocity.x = speed * std::cos(initialAngle);
+    velocity.y = -speed * std::sin(initialAngle);
+
+    // сброс sticky состо€ний
+    sticky = false;
+    isStickyActive = false;
+}
+ // проверка на падение
+bool Ball::isOutOfBounds(float windowHeight) const {
+    return shape.getPosition().y - shape.getRadius() > windowHeight;
+}
+
+//отскоки 
 void Ball::bounceHorizontal() {
     velocity.x = -velocity.x;
 }
@@ -76,23 +105,17 @@ void Ball::bounceVertical() {
 }
 
 void Ball::increaseSpeed() {
-    velocity *= 1.2f;
+    velocity *= 1.1f;
 }
 
 void Ball::changeTrajectory() {
-    // угол от -60∞ до +60∞
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<float> angleDist(-60.0f, 60.0f);
+    float angleDegrees = randomFloat(-60.f, 60.f);
+    float angleRadians = degToRad(angleDegrees);
 
-    float angle = angleDist(gen);
-    float angleRadians = angle * 3.14159f / 180.0f;
+    float currentSpeed = std::hypot(velocity.x, velocity.y);
 
-    float newSpeed = sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-
-    // пересчЄт направлени€ по новому углу
-    velocity.x = newSpeed * sin(angleRadians);
-    velocity.y = -abs(newSpeed * cos(angleRadians)); // вверх или вниз случайно
+    velocity.x = currentSpeed * std::sin(angleRadians);
+    velocity.y = -std::abs(currentSpeed * std::cos(angleRadians));
 
     if (rand() % 2 == 0) {
         velocity.y = -velocity.y;
@@ -100,8 +123,8 @@ void Ball::changeTrajectory() {
 }
 
 void Ball::setSticky(bool value) {
-    sticky = value;
-    isStickyActive = value;
+    sticky = value; //доступен ли бонус
+    isStickyActive = value; //применЄн ли
 }
 
 bool Ball::isSticky() const {
@@ -110,19 +133,14 @@ bool Ball::isSticky() const {
 
 void Ball::applyStickyEffect(float paddleX, float paddleY, float paddleWidth) {
     float radius = shape.getRadius();
-    shape.setPosition(
-        paddleX + paddleWidth / 2 - radius,
-        paddleY - radius * 2
-    );
+    shape.setPosition(paddleX + paddleWidth / 2.f - radius, paddleY - radius * 2.f);
 
-    velocity.x = 0;
-    velocity.y = 0;
+    velocity = { 0.f, 0.f };
 }
 
 void Ball::releaseSticky() {
     if (sticky && isStickyActive) {
-        velocity.x = 0;
-        velocity.y = -speed; // летит вверх
-        isStickyActive = false; // больше не липнет
+        velocity = { 0.f, -speed };
+        isStickyActive = false;
     }
 }

@@ -1,225 +1,161 @@
 ﻿#include <SFML/Graphics.hpp>
-#include <SFML/Window.hpp>
-#include <SFML/System.hpp>
-#include <iostream>
 #include <vector>
-#include <random>
+#include <memory>
+#include <cstdlib>
+#include <ctime>
+#include <iostream>
+
 #include "Paddle.h"
 #include "Ball.h"
-#include "Block.h"
 #include "Bonus.h"
+#include "Block.h"
 
 int main() {
+    int score = 0;
+    int lives = 3;
+
+    // srand - задаёт нач. знач. для генератора случайных чисел (чтобы каждый раз разная последовательность)
+    // static_cast<unsigned int> приведение типов (от time_t)
+    // std::time(nullptr) - возвращает текущее время
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+    //sf::RenderWindow - окно для рисования; размеры();заголовок
     sf::RenderWindow window(sf::VideoMode(800, 600), "Arkanoid");
-    Paddle paddle(350.0f, 550.0f);
-    Paddle extraPaddle(350.0f, 500.0f, 100.0f, 20.0f);
-    Ball ball(400.0f, 300.0f, 10.0f);
-    sf::Clock clock;
+    window.setFramerateLimit(60); // обращаемся к методу объекта window; setFramerateLimit(60) — метод класса RenderWindow (ограничение фпс)
 
-    std::random_device rd;
-    std::mt19937 gen(rd());
+    Paddle paddle; // создание объекта по умолч.
+    Ball ball(400.f, 300.f, 10.f);
 
-    // для случайного выбора типа блока
-    std::uniform_int_distribution<> distType(0, 3);
-    // для случайного выбора типа бонуса
-    std::uniform_int_distribution<> distBonusType(0, 4);
+    std::vector<std::unique_ptr<Block>> blocks; // <std::unique_ptr<Block>> — умные указатели на объекты Block, которые автоматически управляют памятью
+    std::vector<std::unique_ptr<Bonus>> bonuses;
 
-    std::vector<Block> blocks;
-    float blockWidth = 70.0f, blockHeight = 20.0f, blockSpacing = 5.0f;
+    // создание блоков
+    const int rows = 5;
+    const int cols = 11;
+    const float blockWidth = 70.f;
+    const float blockHeight = 20.f;
+    const float startX = 0.f;
+    const float startY = 0.f;
+    const float padding = 2.f; //отступ
 
-    int bonusBlocks = 6, violetBlocks = 5, cyanBlocks = 2;
-    int totalBlocks = 40;
-
-    int row = 0, col = 0;
-    for (int i = 0; i < totalBlocks; ++i) {
-        float x = col * (blockWidth + blockSpacing) + 10.0f;
-        float y = row * (blockHeight + blockSpacing) + 50.0f;
-
-        int blockType = distType(gen);
-
-        Block::Type blockTypeEnum = Block::Type::Green;
-        sf::Color blockColor;
-        int blockHealth = 1;
-
-        switch (blockType) {
-        case 0:  // Фиолетовый
-            if (violetBlocks > 0) {
-                blockColor = sf::Color(128, 0, 128);
-                blockHealth = 9999;
-                blockTypeEnum = Block::Type::Violet;
-                --violetBlocks;
-            }
-            else {
-                blockColor = sf::Color::Green;
-                blockHealth = 1;
-                blockTypeEnum = Block::Type::Green;
-            }
-            break;
-        case 1:  // Жёлтый (с бонусом)
-            if (bonusBlocks > 0) {
-                blockColor = sf::Color::Yellow;
-                blockHealth = 1;
-                blockTypeEnum = Block::Type::Bonus;
-                --bonusBlocks;
-            }
-            else {
-                blockColor = sf::Color::Green;
-                blockHealth = 1;
-                blockTypeEnum = Block::Type::Green;
-            }
-            break;
-        case 2:  // Голубой (ускоряющий)
-            if (cyanBlocks > 0) {
-                blockColor = sf::Color::Cyan;
-                blockHealth = 1;
-                blockTypeEnum = Block::Type::Cyan;
-                --cyanBlocks;
-            }
-            else {
-                blockColor = sf::Color::Green;
-                blockHealth = 1;
-                blockTypeEnum = Block::Type::Green;
-            }
-            break;
-        case 3:  // Зелёный (обычный)
-            blockColor = sf::Color::Green;
-            blockHealth = 1 + (i % 3);
-            blockTypeEnum = Block::Type::Green;
-            break;
-        }
-
-        blocks.emplace_back(x, y, blockWidth, blockHeight, blockHealth, blockColor, blockTypeEnum);
-
-        col++;
-        if (col >= 10) {
-            col = 0;
-            row++;
-        }
+    for (int i = 0; i < rows; ++i) {
+        for (int j = 0; j < cols; ++j) {
+            float x = startX + j * (blockWidth + padding);
+            float y = startY + i * (blockHeight + padding);
+            blocks.push_back(BlockFactory::createRandomBlock(x, y)); //push_back(...) — добавить в конец вектора blocks
+        }                                                           // обращение к методу createRandomBlock(возвр. указательно на блок) из класса BlockFactory
     }
 
-    std::vector<Bonus> bonuses;
-    int score = 0, defeats = 0;
+    sf::Clock clock; // игровой таймер ( измерение времени между кадрами)
 
     while (window.isOpen()) {
+        float deltaTime = clock.restart().asSeconds(); //сбрасываем таймер(clock.restart()) и возвращаем время в с (asSeconds())
+
+        //обработка событий
         sf::Event event;
-        while (window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed)
+        while (window.pollEvent(event)) {// pollEvent проверяет, есть ли событие в очереди и, если есть, извлекает его в переменную event
+            if (event.type == sf::Event::Closed) { //закрытие окна при нажатии крестика
                 window.close();
+                std::cout << "Game Over! Score: " << score << std::endl;
+            }
+
+            // для отлипания мяча от каретки при жёлтом бонусе (пробел)
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Space) {
+                ball.releaseSticky();
+            }
         }
 
-        float deltaTime = clock.restart().asSeconds();
+        // управление кареткой
+        paddle.update(window, deltaTime);
 
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) paddle.moveLeft(deltaTime);
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) paddle.moveRight(deltaTime);
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) ball.releaseSticky();
-
-        paddle.update(window);
-        ball.update(deltaTime, paddle.getBounds().left, paddle.getBounds().top, paddle.getBounds().width);
-
-        if (paddle.isOneTime() && !paddle.isOneTimeUsed()) {
-            extraPaddle.update(window);
-            ball.checkCollisionWithPaddle(
-                extraPaddle.getBounds().left,
-                extraPaddle.getBounds().top,
-                extraPaddle.getBounds().width,
-                extraPaddle.getBounds().height,
-                true
-            );
-        }
-
+        ball.update(deltaTime, paddle.getPosition().x, paddle.getPosition().y, paddle.getBounds().width);
+        // проверка столкновений 
         ball.checkCollision(window);
-        ball.checkCollisionWithPaddle(paddle.getBounds().left, paddle.getBounds().top,
-            paddle.getBounds().width, paddle.getBounds().height, paddle.isOneTime());
+        ball.checkCollisionWithPaddle(
+            paddle.getPosition().x,
+            paddle.getPosition().y,
+            paddle.getBounds().width,
+            paddle.getBounds().height,
+            paddle.isOneTime()
+        );
 
-        if (paddle.isOneTime() && !paddle.isOneTimeUsed()) {
-            if (ball.getBounds().intersects(extraPaddle.getBounds())) {
-                ball.bounceVertical();
-                paddle.setOneTime(false);  // деактивируем доп. каретку после использования
-                paddle.resetOneTime();
-            }
-        }
-
-        // столкновения с блоками
+        // столкновение с блоками
         for (auto& block : blocks) {
-            if (!block.isDestroyed() && ball.getBounds().intersects(block.getBounds())) {
-                ball.bounceVertical();
+            if (!block->isDestroyed() && block->getBounds().intersects(ball.getBounds())) { 
+                // -> обращение к методу через указатель(block); intersects(..) — проверка на пересечение прямоугольников
+                block->onHit(bonuses, ball);
+                ball.bounceVertical();  // предполагаем отражение по вертикали
 
-                if (block.getType() == Block::Type::Violet) {
-                    // фиолетовый блок не разрушается
+                if (dynamic_cast<VioletBlock*>(block.get()) == nullptr) { //dynamic_cast — проверка и приведение типа (от block*)
+                    score++;
+                    std::cout << "Score: " << score << ", Lives: " << lives << std::endl;
                 }
-                else {
-                    block.hit();
 
-                    if (block.getType() == Block::Type::Bonus) {
-                        Bonus::Type randomType = static_cast<Bonus::Type>(distBonusType(gen));
-                        bonuses.emplace_back(
-                            block.getBounds().left + (block.getBounds().width - 30.0f) / 2.0f,
-                            block.getBounds().top + block.getBounds().height + 20.0f,  // чуть ниже блока
-                            randomType);
-                    }
+                break; // чтобы не обработать несколько блоков за один кадр
+            }
+        }
+        
+        // отскок от доп. каретки
+        if (paddle.isOneTime() && !paddle.isOneTimeUsed() &&
+            paddle.getOneTimeBounds().intersects(ball.getBounds())) {
 
-                    if (block.getType() == Block::Type::Cyan) {
-                        ball.increaseSpeed();
-                    }
+            ball.bounceVertical();
+            paddle.resetOneTime();
+        }
 
-                    score += 1;
-                    std::cout << "Score: " << score << std::endl;
+        // выход за границу нижнюю
+        if (ball.isOutOfBounds(window.getSize().y)) {
+            lives--;
+            score--;
+            std::cout << "Score: " << score << ", Lives: " << lives << std::endl;
+
+            if (lives <= 0) {
+                std::cout << "Game Over! Score: " << score << std::endl;
+                window.close();
+            }
+            else {
+                ball.reset(400.f, 300.f);           // сбросить мяч в центр
+                paddle = Paddle(350.f, 550.f, 100.f, 20.f); // сбросить позицию каретки
+            }
+        }
+
+        // удаляем уничтоженные блоки
+        // remove_if — "сдвигает" все удалённые элементы в конец(возвращ. итератор на начало хвоста); erase(..) — удаляет их из вектора
+        blocks.erase(std::remove_if(blocks.begin(), blocks.end(), // 1 и посл эл-т вектора (диапазон всех)
+            [](const std::unique_ptr<Block>& b) { return b->isDestroyed(); }),//условие; (если уничтожен - true)
+            blocks.end()); //конец  перемещённого хвоста
+
+        // обновляем бонусы
+        for (auto& bonus : bonuses) {// по всем элементам контейнера
+            if (bonus->isActive()) {
+                bonus->update(deltaTime);
+
+                // проверяем столкновение бонуса с кареткой
+                if (bonus->getBounds().intersects(paddle.getBounds())) {
+                    bonus->apply(paddle, ball);
                 }
             }
         }
 
-        for (auto& bonus : bonuses) {
-            bonus.update(deltaTime);
-        }
-
-        // обработка столкновений бонусов с кареткой
-        for (size_t i = 0; i < bonuses.size(); ++i) {
-            if (bonuses[i].getBounds().intersects(paddle.getBounds())) {
-                if (bonuses[i].getType() == Bonus::Type::ONE_TIME_PADDLE) {
-                    paddle.setOneTime(true); // активируем доп. каретку
-                }
-                else if (bonuses[i].getType() == Bonus::Type::CHANGE_TRAJECTORY) {
-                    ball.changeTrajectory(); // меняем траекторию шара
-                }
-                bonuses[i].activate(paddle, ball);
-                bonuses.erase(bonuses.begin() + i);
-                --i;
-            }
-        }
-
-
-        // удаление бонусов, вышедших за экран или неактивных
-        bonuses.erase(std::remove_if(bonuses.begin(), bonuses.end(),
-            [&window](const Bonus& b) {
-                return b.isOutOfWindow(window) || !b.isActive();
-            }),
+        // удаляем неактивные бонусы
+        bonuses.erase(std::remove_if(bonuses.begin(), bonuses.end(), 
+            [](const std::unique_ptr<Bonus>& b) { return !b->isActive(); }), // true - если неактивен
             bonuses.end());
 
-        // проверка падения мяча
-        if (ball.getBounds().top > window.getSize().y) {
-            defeats++;
-            score -= 2;
-            std::cout << "Defeats: " << defeats << "/3" << std::endl;
-            ball = Ball(400.0f, 300.0f, 10.0f);
-            float newWidth = paddle.getBounds().width * 0.8f;
-            paddle.setSize(newWidth, paddle.getBounds().height);
-        }
+        // очистка экрана (заполнение чёрным)
+        window.clear(sf::Color::Black);
 
-        if (defeats >= 3) {
-            std::cout << "Game Over! Final Score: " << score << std::endl;
-            window.close();
-        }
-
-
-        window.clear();
         paddle.draw(window);
         ball.draw(window);
-        if (paddle.isOneTime() && !paddle.isOneTimeUsed()) {
-            extraPaddle.draw(window);
-        }
-        for (auto& block : blocks) block.draw(window);
-        for (auto& bonus : bonuses) bonus.draw(window);
+
+        // рисуем блоки и бонусы
+        for (const auto& block : blocks)
+            block->draw(window);
+
+        for (const auto& bonus : bonuses)
+            bonus->draw(window);
+
+        //отображаем 
         window.display();
     }
 
