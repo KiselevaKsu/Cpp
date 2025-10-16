@@ -19,4 +19,6 @@ public:
 
     std::vector<std::unique_ptr<PluginDesc>> loadAll(const std::string& folder = "./plugins");
 
+private:
+    bool tryLoadDll(const std::string& fullpath, std::unique_ptr<PluginDesc>& out);
 };
