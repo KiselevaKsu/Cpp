@@ -39,3 +39,44 @@ std::vector<std::unique_ptr<PluginDesc>> PluginLoader::loadAll(const std::string
     return result;
 }
 
+bool PluginLoader::tryLoadDll(const std::string& fullpath, std::unique_ptr<PluginDesc>& out) {
+    HMODULE h = LoadLibraryA(fullpath.c_str());
+    if (!h) {
+        std::cerr << "[ERROR] Failed to load DLL: " << fullpath << "\n";
+        return false;
+    }
+
+    auto proc = reinterpret_cast<CreateFunc_t>(GetProcAddress(h, "CreateFunction"));
+    if (!proc) {
+        std::cerr << "[WARN] DLL does not export CreateFunction(): " << fullpath << "\n";
+        FreeLibrary(h);
+        return false;
+    }
+
+    IFunction* f = nullptr;
+    try {
+        f = proc();
+    }
+    catch (const std::exception& ex) {
+        std::cerr << "[ERROR] Exception in factory from " << fullpath << ": " << ex.what() << "\n";
+        FreeLibrary(h);
+        return false;
+    }
+    catch (...) {
+        std::cerr << "[ERROR] Unknown exception in factory from " << fullpath << "\n";
+        FreeLibrary(h);
+        return false;
+    }
+
+    if (!f) {
+        std::cerr << "[WARN] Factory returned null in " << fullpath << "\n";
+        FreeLibrary(h);
+        return false;
+    }
+
+    out->path = fullpath;
+    out->module = h;
+    out->funcPtr = f;
+    std::cout << "[OK] Loaded plugin: " << fullpath << " (function: " << f->name() << ")\n";
+    return true;
+}
