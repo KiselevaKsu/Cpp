@@ -130,12 +130,14 @@
   <ItemGroup>
     <ClCompile Include="Calculator.cpp" />
     <ClCompile Include="ExpressionEvaluator.cpp" />
+    <ClCompile Include="Parser.cpp" />
     <ClCompile Include="PluginLoader.cpp" />
     <ClCompile Include="Tokenizer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ExpressionEvaluator.h" />
     <ClInclude Include="FunctionInterface.h" />
+    <ClInclude Include="Parser.h" />
     <ClInclude Include="PluginLoader.h" />
     <ClInclude Include="Tokenizer.h" />
   </ItemGroup>

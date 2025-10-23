@@ -1,10 +1,13 @@
-﻿#include "Tokenizer.h"
+﻿#include "Parser.h"
 #include <iostream>
 
 int main() {
-    Tokenizer t("16 + 4 * (3 - 1)");
-    Token tok;
-    while ((tok = t.next()).type != TokenType::End) {
-        std::cout << "Token: [" << tok.text << "]\n";
+    Parser parser("16 + 4 * (3 - 1)");
+    auto rpn = parser.parse();
+
+    std::cout << "RPN output:\n";
+    for (auto& item : rpn) {
+        std::cout << item.text << " ";
     }
+    std::cout << "\n";
 }

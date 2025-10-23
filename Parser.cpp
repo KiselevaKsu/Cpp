@@ -79,6 +79,12 @@ std::vector<RpnItem> Parser::parse() {
         }
     }
 
+    while (!ops.empty()) {
+        if (ops.top().type == TokenType::LeftParen || ops.top().type == TokenType::RightParen)
+            throw std::runtime_error("Mismatched parentheses at end");
+        output.push_back({ ops.top().type, ops.top().text });
+        ops.pop();
+    }
 
     return output;
 }
