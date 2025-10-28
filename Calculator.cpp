@@ -1,13 +1,17 @@
-﻿#include "Parser.h"
+﻿#include "ExpressionEvaluator.h"
 #include <iostream>
 
 int main() {
-    Parser parser("16 + 4 * (3 - 1)");
-    auto rpn = parser.parse();
+    ExpressionEvaluator calc;
 
-    std::cout << "RPN output:\n";
-    for (auto& item : rpn) {
-        std::cout << item.text << " ";
+    try {
+        std::string expr1 = "16 + 4 * (3 - 1)";
+        std::cout << expr1 << " = " << calc.evaluate(expr1) << "\n";
+
+        std::string expr2 = "2^4 + sin(90)";
+        std::cout << expr2 << " = " << calc.evaluate(expr2) << "\n";
     }
-    std::cout << "\n";
+    catch (const std::exception& ex) {
+        std::cerr << "[FATAL] " << ex.what() << "\n";
+    }
 }
