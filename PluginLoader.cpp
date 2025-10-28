@@ -7,7 +7,20 @@ namespace fs = std::filesystem;
 using CreateFunc_t = IFunction * (__cdecl*)();
 
 PluginLoader::~PluginLoader() {
-    // все библиотеки будут освобождены позже (в main)
+    for (auto& desc : loaded_) {
+        if (desc) {
+            if (desc->funcPtr) {
+                delete desc->funcPtr; // удаляем объект функции
+                desc->funcPtr = nullptr;
+            }
+            if (desc->module) {
+                FreeLibrary(desc->module);  // выгружаем DLL
+                desc->module = nullptr;
+            }
+        }
+    }
+    loaded_.clear();
+    std::cout << "[DEBUG] All plugins unloaded.\n";
 }
 
 std::vector<std::unique_ptr<PluginDesc>> PluginLoader::loadAll(const std::string& folder) {
