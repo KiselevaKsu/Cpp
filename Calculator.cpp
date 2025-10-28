@@ -1,17 +1,21 @@
 ﻿#include "ExpressionEvaluator.h"
+#include "PluginLoader.h"
 #include <iostream>
 
 int main() {
     ExpressionEvaluator calc;
+    PluginLoader loader;
+
+    auto plugins = loader.loadAll("./plugins");
+    loader.registerAll(calc, plugins);
 
     try {
-        std::string expr1 = "16 + 4 * (3 - 1)";
-        std::cout << expr1 << " = " << calc.evaluate(expr1) << "\n";
-
-        std::string expr2 = "2^4 + sin(90)";
-        std::cout << expr2 << " = " << calc.evaluate(expr2) << "\n";
+        std::cout << "2^4 + sin(90) = " << calc.evaluate("2^4 + sin(90)") << "\n";
+        std::cout << "deg(3.1415926535) = " << calc.evaluate("deg(3.1415926535)") << "\n";
     }
     catch (const std::exception& ex) {
         std::cerr << "[FATAL] " << ex.what() << "\n";
     }
+
+    return 0;
 }

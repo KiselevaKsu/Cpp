@@ -80,3 +80,26 @@ bool PluginLoader::tryLoadDll(const std::string& fullpath, std::unique_ptr<Plugi
     std::cout << "[OK] Loaded plugin: " << fullpath << " (function: " << f->name() << ")\n";
     return true;
 }
+
+void PluginLoader::registerAll(ExpressionEvaluator& eval, const std::vector<std::unique_ptr<PluginDesc>>& plugins) {
+    for (const auto& p : plugins) {
+        if (!p || !p->funcPtr) continue;
+
+        IFunction* f = p->funcPtr;
+        try {
+            // адаптируем IFunction к std::function<double(const double*, int)>
+            eval.registerFunction(
+                f->name(),
+                [f](const double* args, int argc) {
+                    return f->invoke(args, argc);
+                },
+                f->arity()
+            );
+
+            std::cout << "[OK] Registered plugin function: " << f->name() << "\n";
+        }
+        catch (const std::exception& ex) {
+            std::cerr << "[ERROR] Failed to register function " << f->name() << ": " << ex.what() << "\n";
+        }
+    }
+}
