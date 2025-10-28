@@ -7,7 +7,7 @@
 
 struct FunctionEntry {
     std::function<double(const double*, int)> caller;
-    int arity;
+    int arity = 0;
 };
 
 class ExpressionEvaluator {

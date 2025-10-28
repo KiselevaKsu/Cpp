@@ -13,7 +13,7 @@ enum class TokenType {
 };
 
 struct Token {
-    TokenType type;
+    TokenType type = TokenType::End;
     std::string text;
     double value = 0.0; // используется, если это число
 };

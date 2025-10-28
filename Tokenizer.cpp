@@ -21,6 +21,21 @@ Token Tokenizer::next() {
 
     char c = expr_[pos_];
 
+    // число (включая знак + или -)
+    if ((c == '-' || c == '+') &&
+        (pos_ == 0 || expr_[pos_ - 1] == '(') &&
+        pos_ + 1 < expr_.size() && std::isdigit(expr_[pos_ + 1]))
+    {
+        size_t start = pos_;
+        ++pos_;
+        while (pos_ < expr_.size() && (std::isdigit(expr_[pos_]) || expr_[pos_] == '.')) ++pos_;
+        Token t;
+        t.type = TokenType::Number;
+        t.text = expr_.substr(start, pos_ - start);
+        t.value = std::stod(t.text);
+        return t;
+    }
+
     // число
     if (std::isdigit(static_cast<unsigned char>(c)) || (c == '.' && pos_ + 1 < expr_.size() && std::isdigit(expr_[pos_ + 1]))) {
         size_t start = pos_;
@@ -32,6 +47,7 @@ Token Tokenizer::next() {
         t.value = std::stod(t.text);
         return t;
     }
+
 
     // идентификатор (функция)
     if (std::isalpha(static_cast<unsigned char>(c))) {

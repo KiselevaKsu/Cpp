@@ -79,13 +79,13 @@ double ExpressionEvaluator::evaluate(const std::string& expr) {
                 if (st.size() < static_cast<size_t>(arity))
                     throw std::runtime_error("Not enough arguments for " + item.text);
 
-                double args[8]; // ограничение на кол-во аргументов
+                std::vector<double> args(arity);
                 for (int i = arity - 1; i >= 0; --i) {
                     args[i] = st.top();
                     st.pop();
                 }
 
-                double res = it->second.caller(args, arity);
+                double res = it->second.caller(args.data(), arity);
                 st.push(res);
             }
         }

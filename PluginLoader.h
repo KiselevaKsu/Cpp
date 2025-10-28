@@ -18,12 +18,12 @@ public:
     PluginLoader() = default;
     ~PluginLoader();
 
-    std::vector<std::unique_ptr<PluginDesc>> loadAll(const std::string& folder = "./plugins");
+    const std::vector<std::unique_ptr<PluginDesc>>& getLoaded() const { return loaded_; }
 
-    void registerAll(ExpressionEvaluator& eval, const std::vector<std::unique_ptr<PluginDesc>>& plugins);
+    void loadAll(const std::string& folder = "./plugins");
+    void registerAll(ExpressionEvaluator& eval);
 
 private:
     std::vector<std::unique_ptr<PluginDesc>> loaded_;
-
     bool tryLoadDll(const std::string& fullpath, std::unique_ptr<PluginDesc>& out);
 };

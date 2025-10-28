@@ -1,0 +1,4 @@
+﻿  pch.cpp
+  dllmain.cpp
+     Создается библиотека C:\Users\Ксюша\source\repos\Calculator\plugins\funcln\funcln\\Calculator\plugins\funcln.lib и объект C:\Users\Ксюша\source\repos\Calculator\plugins\funcln\funcln\\Calculator\plugins\funcln.exp
+  funcln.vcxproj -> C:\Users\Ксюша\source\repos\Calculator\plugins\funcln\funcln\Calculator\plugins\funcln.dll
