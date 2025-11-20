@@ -4,8 +4,9 @@
 #include <vector>
 #include <utility>
 #include <functional>
+#include "subject.h"
 
-class Subject;
+
 
 class Wrapper
 {
