@@ -1,6 +1,6 @@
 #include "engine.h"
 
-// просто сохраняем указатель
+// просто сохраняем указатель и имя
 void Engine::registerCommand(Wrapper* cmd, const std::string& text)
 {
     cmd->setName(text);
@@ -10,7 +10,16 @@ void Engine::registerCommand(Wrapper* cmd, const std::string& text)
 int Engine::execute(const std::string& text,
     const std::vector<std::pair<std::string, int>>& args)
 {
-    // заглушка
-    // потом тут будет вызов wrapper
+    // ищем команду по имени
+    for (auto* cmd : list)
+    {
+        if (cmd->getName() == text)
+        {
+            // вызываем метод через wrapper
+            return cmd->call(args);
+        }
+    }
+
+    // если команда не найдена — пусть будет 0
     return 0;
 }
