@@ -7,13 +7,17 @@ int main()
 {
     Subject subj;
 
-    Wrapper wrapper(&subj, &Subject::f3, { {"arg1", 0}, {"arg2", 0} });
+    Wrapper <Subject, int(Subject::*)(int, int)> wrapper(&subj, &Subject::f3,
+        { {"arg1", 0}, {"arg2", 0} });
 
     Engine engine;
 
     engine.registerCommand(&wrapper, "command1");
 
-    int result = engine.execute("command1", { {"arg1", 4}, {"arg2", 5} });
+    int result = engine.execute<Subject, int(Subject::*)(int, int)>(
+        "command1",
+        { {"arg1", 4}, {"arg2", 5} }
+    );
 
     std::cout << "result: " << result << std::endl;
 
